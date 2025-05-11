@@ -1,17 +1,16 @@
-import java.util.ArrayList;
 import java.util.Objects;
 
 public class StrHashTable {
 
-    private String[] table;
+    private Node[] table;
     private int size;
     private int fullRows;
-    private int noRehashes;
-    private int noCollisions;
+    private int numRehashes;
+    private int numCollisions;
 
     public StrHashTable(int size) {
         this.size = size;
-        table = new String[size];
+        table = new Node[size];
     }
 
     /**
@@ -21,7 +20,8 @@ public class StrHashTable {
         // find the index, check if empty and insert
         int index = hashFunction(k);
         if (Objects.equals(table[index], null)){
-            table[index] = v;
+            Node newNode = new Node(k, v);
+            table[index] = newNode;
             fullRows++;
         }
         else {
@@ -67,17 +67,17 @@ public class StrHashTable {
         if (fullness >= 0.8){
             System.out.println("Resizing");
             size = size * 2;
-            String[] copy = table;
-            table = new String[size];
+            Node[] copy = table;
+            table = new Node[size];
             fullRows = 0;
-            for (int i = 0; i < copy.length; i++){
-                if (copy[i] != null){
-                 //   insert(copy[i]);
+            for (Node node : copy) {
+                if (node != null) {
+                    insert(node.key, node.value);
                 }
             }
             //insert(x);
         }
-        // TODO determine if below is needed
+        // TODO determine if below is needed, i think this bit is for seperate chaining
 //        else {
 //            System.out.println("Rehashing.");
 //            int i = key;
@@ -92,23 +92,30 @@ public class StrHashTable {
 
         public boolean contains(String k){
             int index = hashFunction(k);
-            if (table[index] == k) {
-                return true;
-            }
-            return false;
+            return Objects.equals(table[index].key, k);
         }
 
-        public void get(String k){}
+        public String get(String k){
+            int index = hashFunction(k);
+            return table[index].value;
+        }
 
         public boolean isempty(){
-            return true;
+            return fullRows == 0;
         }
 
         public int size(){
-        return 0;
+            return size;
         }
 
-        public void dump(){}
+        public void dump(){
+            for (int i = 0; i < table.length; i++) {
+                System.out.println(i + " : " + table[i]);
+            }
+            System.out.println("No. of collisions: " + numCollisions);
+            System.out.println("No. of full rows: " + fullRows);
+            System.out.println("No. of rehashes: " + numRehashes);
+        }
     }
 
 
