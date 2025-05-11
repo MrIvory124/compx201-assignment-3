@@ -37,9 +37,8 @@ public class StrHashTable {
         if (table[index] != null) {
             table[index] = null;
             fullRows--;
-        } else {
-            // handle collisions
         }
+
     }
 
     /**
@@ -67,7 +66,7 @@ public class StrHashTable {
     /**
      * Doubles the size of the table when it is full enough
      */
-    private void rehash() {
+    private void rehash(String k, String v) {
         float fullness = (float) fullRows / size;
         if (fullness >= 0.8) {
             System.out.println("Resizing");
@@ -129,25 +128,25 @@ public class StrHashTable {
         System.out.println("No. of full rows: " + fullRows);
         System.out.println("No. of rehashes: " + numRehashes);
     }
-}
 
-
-/**
- * The node class is the node we store in the table, requires a key and value to be created.
- */
-class Node {
-    String key;
-    String value;
 
     /**
-     * @param key   This is stored in the node and used for the hashtable
-     * @param value The value that is paired with the key and stored in the node
+     * The node class is the node we store in the table, requires a key and value to be created.
      */
-    Node(String key, String value) {
-        this.key = key;
-        this.value = value;
-    }
+    class Node {
+        String key;
+        String value;
 
+        /**
+         * @param key   This is stored in the node and used for the hashtable
+         * @param value The value that is paired with the key and stored in the node
+         */
+        Node(String key, String value) {
+            this.key = key;
+            this.value = value;
+        }
+
+    }
 }
 
 

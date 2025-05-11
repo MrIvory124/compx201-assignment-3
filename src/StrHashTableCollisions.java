@@ -1,8 +1,9 @@
+import java.util.LinkedList;
 import java.util.Objects;
 
 public class StrHashTableCollisions {
 
-    private Node[] table;
+    private LinkedList<Node>[] table;
     private int size;
     private int fullRows;
     private int numRehashes;
@@ -10,34 +11,58 @@ public class StrHashTableCollisions {
 
     public StrHashTableCollisions(int size) {
         this.size = size;
-        table = new Node[size];
+        table = new LinkedList[size];
     }
 
     /**
      * @param k The key of the value you wish to insert
      */
     public void insert (String k, String v) {
+        insertInternal(k,v,true);
+    }
+
+
+    /**
+     * Note to marker: My old insert logic recursively called rehash. This is the easiest
+     * way I could fix this without having to rewrite the insert code again in the rehash class.
+     * @param rehash A boolean that is only triggered for rehash inserting
+     */
+    private void insertInternal (String k, String v, boolean rehash) {
         // find the index, check if empty and insert
         int index = hashFunction(k);
         if (Objects.equals(table[index], null)){
+            // create new linked list and insert
             Node newNode = new Node(k, v);
-            table[index] = newNode;
+            LinkedList<Node> tempList = new LinkedList<>();
+            tempList.add(newNode);
+            table[index] = tempList;
             fullRows++;
         }
         else {
-            // handle collisions
+            // else there is a linked list there already, just insert it
+            table[index].add(new Node(k, v));
+            numCollisions++;
         }
+        if (rehash) { rehash(); }
+
     }
 
     public void delete(String k){
         // go to index and remove it
         int index = hashFunction(k);
-        if (table[index] != null){
-            table[index] = null;
-            fullRows--;
-        }
-        else {
-            // handle collisions
+        LinkedList<Node> tempList = table[index];
+        if (tempList != null){
+            // go through the linked list, find and remove the matching node
+            for (int i = 0; i < tempList.size(); i++) {
+                Node node = tempList.get(i);
+                if (node.key.equals(k)) { tempList.remove(node); return; }
+            }
+            // check if anymore items in the linked list, and remove
+            if (tempList.isEmpty()){
+                table[index] = null;
+                fullRows--;
+            }
+
         }
     }
 
@@ -64,33 +89,55 @@ public class StrHashTableCollisions {
      */
     private void rehash(){
         float fullness = (float) fullRows / size;
+        // if almost full
         if (fullness >= 0.8){
+            // double size, moving all linked lists to the new one
             System.out.println("Resizing");
             size = size * 2;
-            Node[] copy = table;
-            table = new Node[size];
+            LinkedList<Node>[] copy = table;
+            table = new LinkedList[size];
             fullRows = 0;
-            for (Node node : copy) {
-                if (node != null) {
-                    insert(node.key, node.value);
+            numRehashes += 1;
+            numCollisions = 0;
+            // for each position in the copied list
+            for (LinkedList<Node> list : copy) {
+
+                if (list != null && !list.isEmpty()) {
+                    // for each node node in an existing list, insert it
+                    for (Node node : list) {
+                        insertInternal(node.key, node.value, false);
+                    }
                 }
             }
-            //insert(x);
         }
-        // TODO determine if below is needed, i think this bit is for seperate chaining
-        else {
+    }
 
+    public boolean contains(String k) {
+        int index = hashFunction(k);
+        LinkedList<Node> tempList = table[index];
+        if (tempList != null) {
+            // go through the linked list, find and remove the matching node
+            for (int i = 0; i < tempList.size(); i++) {
+                Node node = tempList.get(i);
+                if (node.key.equals(k)) {
+                    return true;
+                }
             }
+        }
+        return false;
     }
 
-    public boolean contains(String k){
+    public String get(String k) {
         int index = hashFunction(k);
-        return Objects.equals(table[index].key, k);
-    }
-
-    public String get(String k){
-        int index = hashFunction(k);
-        return table[index].value;
+        LinkedList<Node> list = table[index];
+        if (list != null) {
+            for (Node node : list) {
+                if (node.key.equals(k)) {
+                    return node.value;
+                }
+            }
+        }
+        return null;
     }
 
     public boolean isempty(){
@@ -103,7 +150,13 @@ public class StrHashTableCollisions {
 
     public void dump(){
         for (int i = 0; i < table.length; i++) {
-            System.out.println(i + " : " + table[i]);
+            if (table[i] != null) {
+                for (Node node : table[i]) {
+                    System.out.println(node.key);
+                }
+            }else {
+                System.out.println(i + " : " + table[i]);
+            }
         }
         System.out.println("No. of collisions: " + numCollisions);
         System.out.println("No. of full rows: " + fullRows);
