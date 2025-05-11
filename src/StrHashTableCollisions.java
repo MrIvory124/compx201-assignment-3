@@ -82,11 +82,7 @@ public class StrHashTableCollisions {
             fullRows++;
         } else {
             // else there is a linked list there already, check for duplicate and update
-            for (Node node : table[index]) {
-                if (node.key.equals(k)) {
-                    table[index].remove(node);
-                }
-            }
+            table[index].removeIf(node -> node.key.equals(k));
             table[index].add(new Node(k, v));
             if (table[index].size() > longestList) {
                 longestList = table[index].size();

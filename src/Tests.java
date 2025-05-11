@@ -1,11 +1,10 @@
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.io.ByteArrayOutputStream;
-
 import static org.junit.jupiter.api.Assertions.*;
 
+// command used in windows to run this:
+// javac -cp junit-platform-console-standalone-1.12.2.jar;. *.java && java -jar junit-platform-console-standalone-1.12.2.jar -cp . -c Tests
 
 class Tests {
     private StrHashTableCollisions hashTable;
@@ -142,7 +141,6 @@ class Tests {
         for (String key : keys) {
             hashTable.insert(key, "value");
         }
-        hashTable.dump();
         assertEquals(1, hashTable.getNumLLCollisions());
     }
 
