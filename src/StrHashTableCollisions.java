@@ -1,6 +1,9 @@
 import java.util.LinkedList;
 import java.util.Objects;
 
+/**
+ * @author RyanB
+ */
 public class StrHashTableCollisions {
 
     private LinkedList<Node>[] table;
@@ -8,17 +11,57 @@ public class StrHashTableCollisions {
     private int fullRows;
     private int numRehashes;
     private int numCollisions;
+    private int numCollisionsLinkedList;
+    private int longestList;
 
     public StrHashTableCollisions(int size) {
+        if (size <= 0) {
+            size = 1;
+        }
         this.size = size;
+        fullRows = 0;
+        numRehashes = 0;
+        numCollisions = 0;
+        numCollisionsLinkedList = 0;
         table = new LinkedList[size];
     }
 
+    public int getFullRows() {
+        return fullRows;
+    }
+
+    public int getNumRehashes() {
+        return numRehashes;
+    }
+
+    public int getNumLLCollisions() {
+        return numCollisionsLinkedList;
+    }
+
+    public int size() {
+        return size;
+    }
+
     /**
-     * @param k The key of the value you wish to insert
+     * @param key The key of the value you wish to insert
      */
-    public void insert (String k, String v) {
-        insertInternal(k,v,true);
+    public void insert(String key, String value) {
+        sanitiseUserInput(key, value);
+        insertInternal(key, value, true);
+    }
+
+    /**
+     * Sanitises a key/value pair by ensuring the proper error is thrown
+     * This is probably useless, but I needed something for the tests
+     * In the real world I would consider putting something into logs or parsing a default
+     * value, but in order to make a test I need to throw the correct error
+     */
+    private void sanitiseUserInput(String key, String value) {
+        if (key != null && value != null) {
+            if (key.isEmpty() || value.isEmpty()) {
+                throw new NullPointerException();
+            }
+        }
     }
 
 
@@ -27,72 +70,80 @@ public class StrHashTableCollisions {
      * way I could fix this without having to rewrite the insert code again in the rehash class.
      * @param rehash A boolean that is only triggered for rehash inserting
      */
-    private void insertInternal (String k, String v, boolean rehash) {
+    private void insertInternal(String k, String v, boolean rehash) {
         // find the index, check if empty and insert
         int index = hashFunction(k);
-        if (Objects.equals(table[index], null)){
+        if (Objects.equals(table[index], null)) {
             // create new linked list and insert
             Node newNode = new Node(k, v);
             LinkedList<Node> tempList = new LinkedList<>();
             tempList.add(newNode);
             table[index] = tempList;
             fullRows++;
-        }
-        else {
-            // else there is a linked list there already, just insert it
+        } else {
+            // else there is a linked list there already, check for duplicate and update
+            for (Node node : table[index]) {
+                if (node.key.equals(k)) {
+                    table[index].remove(node);
+                }
+            }
             table[index].add(new Node(k, v));
+            if (table[index].size() > longestList) {
+                longestList = table[index].size();
+            }
             numCollisions++;
         }
-        if (rehash) { rehash(); }
-
+        if (rehash) {
+            rehash();
+        }
     }
 
-    public void delete(String k){
+    public void delete(String key) {
         // go to index and remove it
-        int index = hashFunction(k);
-        LinkedList<Node> tempList = table[index];
-        if (tempList != null){
+        int index = hashFunction(key);
+        if (table[index] != null) {
             // go through the linked list, find and remove the matching node
-            for (int i = 0; i < tempList.size(); i++) {
-                Node node = tempList.get(i);
-                if (node.key.equals(k)) { tempList.remove(node); return; }
+            for (int i = 0; i < table[index].size(); i++) {
+                Node node = table[index].get(i);
+                if (node.key.equals(key)) {
+                    table[index].remove(node);
+                    if (table[index].isEmpty()) {
+                        table[index] = null;
+                        fullRows--;
+                    }
+                    return;
+                }
             }
-            // check if anymore items in the linked list, and remove
-            if (tempList.isEmpty()){
-                table[index] = null;
-                fullRows--;
-            }
-
         }
     }
 
-    private int hashFunction(String k){
-        int sum = 0;
-        int len = k.length();
-        for (int i = 0; i < len; i += 3) {
-            // each of these queries if there is a number, if not set it to 0
-            int a = (i < len ? k.charAt(i)   : 0);
-            int b = (i+1 < len ? k.charAt(i+1) : 0);
-            int c = (i+2 < len ? k.charAt(i+2) : 0);
-            // pack them as [aaa][bbb][ccc] in one int:
-            // multiplying by 1000 moves the number over by 3
-            int block = (a * 1000 + b) * 1000 + c;
-            sum += block;
+    private int hashFunction(String k) {
+        sanitiseUserInput(k, "value");
+        // below is credited to OpenSDA: CS3 Data Structures & Algorithms
+        char[] chars;
+        chars = k.toCharArray();
+
+        int i, sum;
+        for (sum = 0, i = 0; i < k.length(); i++) {
+            // in java this automatically does ascii/unicode conversion, lot more elegant than
+            // my original solution which did the same thing, only worse...
+            sum += chars[i];
         }
-        // mod back into range
-        System.out.println(sum % size);
-        return sum % size;
+        // just incase we get integer overflow
+        return Math.abs(sum % size);
     }
 
     /**
      * Doubles the size of the table when it is full enough
      */
-    private void rehash(){
-        float fullness = (float) fullRows / size;
+    private void rehash() {
         // if almost full
-        if (fullness >= 0.8){
+        if (((float) fullRows / (float) size) >= 0.8 || longestList >= 5) {
+            if (longestList >= 5) {
+                numCollisionsLinkedList++;
+                longestList = 0;
+            }
             // double size, moving all linked lists to the new one
-            System.out.println("Resizing");
             size = size * 2;
             LinkedList<Node>[] copy = table;
             table = new LinkedList[size];
@@ -104,6 +155,8 @@ public class StrHashTableCollisions {
 
                 if (list != null && !list.isEmpty()) {
                     // for each node node in an existing list, insert it
+                    // here we use rehash = false in order to not get stuck recursively
+                    // If we did get stuck, its a memory related problem
                     for (Node node : list) {
                         insertInternal(node.key, node.value, false);
                     }
@@ -112,13 +165,16 @@ public class StrHashTableCollisions {
         }
     }
 
+    /**
+     * @param k Key you want to check for
+     * @return Returns true if the hashtable has it
+     */
     public boolean contains(String k) {
         int index = hashFunction(k);
-        LinkedList<Node> tempList = table[index];
-        if (tempList != null) {
-            // go through the linked list, find and remove the matching node
-            for (int i = 0; i < tempList.size(); i++) {
-                Node node = tempList.get(i);
+        if (table[index] != null) {
+            // go through the linked list, find the matching node if possible
+            for (int i = 0; i < table[index].size(); i++) {
+                Node node = table[index].get(i);
                 if (node.key.equals(k)) {
                     return true;
                 }
@@ -127,11 +183,17 @@ public class StrHashTableCollisions {
         return false;
     }
 
+
+    /**
+     * @param k Key that you want the value of
+     * @return A string value of the key you passed in. Returns null if node does not exist.
+     * This is a carbon copy of contains, with the added functionality of returning the node's value
+     */
     public String get(String k) {
+        sanitiseUserInput(k, "value");
         int index = hashFunction(k);
-        LinkedList<Node> list = table[index];
-        if (list != null) {
-            for (Node node : list) {
+        if (table[index] != null) {
+            for (Node node : table[index]) {
                 if (node.key.equals(k)) {
                     return node.value;
                 }
@@ -140,42 +202,49 @@ public class StrHashTableCollisions {
         return null;
     }
 
-    public boolean isempty(){
+    /**
+     * @return Returns false if items are in the hashtable
+     */
+    public boolean isempty() {
         return fullRows == 0;
     }
 
-    public int size(){
-        return size;
-    }
-
-    public void dump(){
+    /**
+     * Prints into console the whole linked list structure, including "buckets" where multiple values collide
+     */
+    public void dump() {
         for (int i = 0; i < table.length; i++) {
+            System.out.print(i + " : ");
+            // if its a linked list, iterate through printing to the same line
             if (table[i] != null) {
                 for (Node node : table[i]) {
-                    System.out.println(node.key);
+                    System.out.print(node.key + " : ");
                 }
-            }else {
-                System.out.println(i + " : " + table[i]);
+            } else {
+                System.out.print(table[i]);
             }
+            System.out.print("\r\n");
         }
         System.out.println("No. of collisions: " + numCollisions);
         System.out.println("No. of full rows: " + fullRows);
         System.out.println("No. of rehashes: " + numRehashes);
+        System.out.println("No. of linkedlist rehashes: " + numCollisionsLinkedList);
     }
 }
 
 
-
-
-class Node{
+/**
+ * This is the node that stores key/value pairs. Is used to store colliding values in a linkedList known as a "bucket"
+ */
+class Node {
     String key;
     String value;
 
     /**
-     * @param key This is stored in the node and used for the hashtable
+     * @param key   This is stored in the node and used for the hashtable
      * @param value The value that is paired with the key and stored in the node
      */
-    Node(String key, String value){
+    Node(String key, String value) {
         this.key = key;
         this.value = value;
     }

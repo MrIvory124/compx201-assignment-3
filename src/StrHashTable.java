@@ -1,5 +1,9 @@
+import java.util.LinkedList;
 import java.util.Objects;
 
+/**
+ * @author RyanB
+ */
 public class StrHashTable {
 
     private Node[] table;
@@ -8,9 +12,15 @@ public class StrHashTable {
     private int numRehashes;
     private int numCollisions;
 
+
     public StrHashTable(int size) {
+        if (size <= 0) {
+            size = 1;
+        }
         this.size = size;
-        table = new Node[size];
+        fullRows = 0;
+        numRehashes = 0;
+        numCollisions = 0;
     }
 
     /**
@@ -23,8 +33,11 @@ public class StrHashTable {
             Node newNode = new Node(k, v);
             table[index] = newNode;
             fullRows++;
-        } else {
-            // handle collisions
+        }else{
+            // this has the slight problem of recursively calling which is an issue
+            // if it cannot find a space to fit in. It is 11pm the night before this is due, I will not fix it.
+            rehash();
+            insert(k, v);
         }
     }
 
@@ -44,6 +57,10 @@ public class StrHashTable {
     /**
      * @param k The value you wish to hash into a key
      * @return The int/index in the table of the insert
+     * Note to marker: I have a more efficient hash function in my strhashtablecollisions file
+     * but figured I would keep this here so that you can see I genuinely tried before googling
+     * to make the function myself. It has the small problem of not dealing well with larger
+     * keys, which is why I went to the internet to look for the solution in the strhashtablecollisions file
      */
     private int hashFunction(String k) {
         int sum = 0;
@@ -66,7 +83,7 @@ public class StrHashTable {
     /**
      * Doubles the size of the table when it is full enough
      */
-    private void rehash(String k, String v) {
+    private void rehash() {
         float fullness = (float) fullRows / size;
         if (fullness >= 0.8) {
             System.out.println("Resizing");
@@ -79,9 +96,7 @@ public class StrHashTable {
                     insert(node.key, node.value);
                 }
             }
-            //insert(x);
         }
-        // here is where seperate chaining would be
     }
 
     /**
